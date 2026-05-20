@@ -23,7 +23,7 @@ from FEM.services.io_service import NullIOService
 # 1. ЗАВАНТАЖЕННЯ МОДЕЛІ ТА СКЕЙЛЕРІВ
 # ==========================================
 print("Завантаження даних для ініціалізації скейлерів...")
-df_train = pd.read_csv('fem_stress_dataset_method_b.csv') # ТУТ ПРАВИЛЬНИЙ ФАЙЛ
+df_train = pd.read_csv('fem_stress_dataset_method_b.csv') 
 
 y_cols = [col for col in df_train.columns if col.startswith('TARGET_')]
 ignore_cols = ['sample_id', 'r', 'z', 'p'] + y_cols
@@ -102,7 +102,7 @@ os.chdir(work_dir)
 results_for_plot = []
 
 try:
-    # --- ЦИКЛ 0: Груба сітка ---
+    # --- Груба сітка ---
     factory_c = FEMFactory(r_min, r_max, z_min, z_max, 0, 0, material=mat, node_dof=2).init(ElementType.LINEAR)
     _, mesh_c = factory_c.create(n_points=2)
     mesh_c.generate(config.r_min, config.r_max, config.z_min, config.z_max, rN=4, zN=4, r_func=config.r_func)
@@ -112,9 +112,8 @@ try:
     solver_c0.run(custom_n_points=2, element_type=ElementType.LINEAR)
     
     pp_raw_c0 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_RAW)
-    pp_spr_c0 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_SPR) # Тільки для графіка
+    pp_spr_c0 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_SPR)
     
-    # Зберігаємо стан вузлів ДО адаптації
     target_nodes = []
     for target_node_id, node in list(mesh_c.nodes.items()):
         if node_id_is_on_boundary(mesh_c, target_node_id): continue
@@ -132,7 +131,7 @@ try:
             
         target_nodes.append({'id': target_node_id, 'r': node.r, 'z': node.z, 'S0_T': S0_T, 'C0_T': C0_T, 'neighbors': n_info})
 
-    # --- ЦИКЛ 1: ОДИН КРОК АДАПТАЦІЇ ---
+    # --- ОДИН КРОК АДАПТАЦІЇ ---
     ibem_strategy = FindElementsForRefinementIBEM(io=NullIOService())
     refine_ids = ibem_strategy.find(mesh_c, threshold=0.3, bcs=bcs_c0, mode='eta')
     
@@ -145,7 +144,7 @@ try:
         
     pp_raw_c1 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_RAW)
 
-    # --- ЕТАЛОН: Дрібна сітка (32x32) ---
+    # --- Дрібна сітка (32x32) ---
     factory_f = FEMFactory(r_min, r_max, z_min, z_max, 0, 0, material=mat, node_dof=2).init(ElementType.LINEAR)
     _, mesh_f = factory_f.create(n_points=2)
     mesh_f.generate(config.r_min, config.r_max, config.z_min, config.z_max, rN=32, zN=32, r_func=config.r_func)
@@ -165,7 +164,7 @@ try:
         F_T = pp_f.stresses_at(pt)[0]
         
         row_data = {}
-        # Вхід А: Різниця (Цикл 0 - Цикл 1)
+        # Вхід А
         row_data.update(format_stress_dict(info['S0_T'] - S1_T, prefix="PT_diff_"))
         
         for idx, n_info in enumerate(info['neighbors']):
@@ -184,7 +183,7 @@ try:
             pred_scaled = model(torch.tensor(X_scaled, dtype=torch.float32))
             pred_real = scaler_Y.inverse_transform(pred_scaled.numpy())[0]
             
-        # У Method-B ми прогнозували: F_T - S0_T. Отже: F_T_predicted = S0_T + pred
+        
         NN_T = info['S0_T'] + pred_real
         
         # results_for_plot.append({
