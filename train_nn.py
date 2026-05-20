@@ -27,10 +27,10 @@ except FileNotFoundError:
 
 print(f"Загальна кількість зібраних вузлів: {len(df)}")
 
-# Визначаємо цільові змінні (Y) - це ті, що починаються на TARGET_
+# Визначаємо цільові змінні (Y)
 y_cols = [col for col in df.columns if col.startswith('TARGET_')]
 
-# Визначаємо вхідні ознаки (X) - це все, крім Y та метаданих
+# Визначаємо вхідні ознаки (X)
 ignore_cols = ['sample_id', 'r', 'z', 'p'] + y_cols
 x_cols = [col for col in df.columns if col not in ignore_cols]
 
@@ -40,14 +40,12 @@ print(f"Кількість цільових змінних (Y): {len(y_cols)}")
 X = df[x_cols].values
 Y = df[y_cols].values
 
-# Масштабування даних (Критично важливо для напружень!)
 scaler_X = StandardScaler()
 scaler_Y = StandardScaler()
 
 X_scaled = scaler_X.fit_transform(X)
 Y_scaled = scaler_Y.fit_transform(Y)
 
-# Розбиваємо дані: 80% на тренування, 20% на тест
 X_train, X_test, Y_train, Y_test = train_test_split(X_scaled, Y_scaled, test_size=0.2, random_state=42)
 
 # ==========================================
@@ -67,7 +65,6 @@ class FEMDataset(Dataset):
 train_dataset = FEMDataset(X_train, Y_train)
 test_dataset = FEMDataset(X_test, Y_test)
 
-# Розмір батчу залежить від кількості даних (64 або 128)
 batch_size = 128 if len(X_train) > 5000 else 64
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -98,9 +95,7 @@ model = StressPredictorNN(input_size=len(x_cols), output_size=len(y_cols))
 # ==========================================
 # 4. НАЛАШТУВАННЯ НАВЧАННЯ
 # ==========================================
-criterion = nn.MSELoss() # Середньоквадратична похибка
-#optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-# Додаємо L2-регуляризацію (штраф за великі ваги)
+criterion = nn.MSELoss() 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-4)
 
 epochs = 200
@@ -184,7 +179,6 @@ plt.grid(True)
 plt.savefig('training_loss_method_b.png', dpi=300)
 print("Графік навчання збережено як 'training_loss_method_b.png'")
 
-# Фізична оцінка (Зворотне масштабування)
 model.eval()
 with torch.no_grad():
     test_inputs = torch.tensor(X_test, dtype=torch.float32)
@@ -196,7 +190,6 @@ with torch.no_grad():
     predictions_real = scaler_Y.inverse_transform(predictions_scaled.numpy())
     targets_real = scaler_Y.inverse_transform(test_targets_scaled.numpy())
 
-    # Рахуємо Середню Абсолютну Похибку (MAE)
     mae = np.mean(np.abs(predictions_real - targets_real), axis=0)
     
     print("\nОцінка точності (Середня абсолютна похибка в Паскалях):")
