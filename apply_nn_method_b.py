@@ -23,7 +23,7 @@ from FEM.services.io_service import NullIOService
 # 1. ЗАВАНТАЖЕННЯ МОДЕЛІ ТА СКЕЙЛЕРІВ
 # ==========================================
 print("Завантаження даних для ініціалізації скейлерів...")
-df_train = pd.read_csv('fem_stress_dataset_method_b.csv') 
+df_train = pd.read_csv('fem_stress_dataset_method_b_2000.csv') 
 
 y_cols = [col for col in df_train.columns if col.startswith('TARGET_')]
 ignore_cols = ['sample_id', 'r', 'z', 'p'] + y_cols
@@ -70,7 +70,7 @@ class StressPredictorNN(nn.Module):
         return self.network(x)
 
 model = StressPredictorNN(input_size=len(x_cols), output_size=len(y_cols))
-model.load_state_dict(torch.load("fem_stress_model.pth"))
+model.load_state_dict(torch.load("fem_stress_model_method_b.pth"))
 model.eval()
 
 # ==========================================
