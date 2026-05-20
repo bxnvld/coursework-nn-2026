@@ -34,20 +34,38 @@ scaler_Y = StandardScaler()
 scaler_X.fit(df_train[x_cols].values)
 scaler_Y.fit(df_train[y_cols].values)
 
+# class StressPredictorNN(nn.Module):
+#     def __init__(self, input_size, output_size):
+#         super(StressPredictorNN, self).__init__()
+#         self.network = nn.Sequential(
+#             nn.Linear(input_size, 256),
+#             nn.LeakyReLU(),
+#             nn.Dropout(0.2),
+#             nn.Linear(256, 128),
+#             nn.LeakyReLU(),
+#             nn.Dropout(0.2),
+#             nn.Linear(128, 64),
+#             nn.LeakyReLU(),
+#             nn.Linear(64, output_size)
+#         )
+#     def forward(self, x):
+#         return self.network(x)
+
 class StressPredictorNN(nn.Module):
     def __init__(self, input_size, output_size):
         super(StressPredictorNN, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(input_size, 256),
+            nn.Linear(input_size, 512),
             nn.LeakyReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, 128),
+            nn.Dropout(0.2), 
+            nn.Linear(512, 512),
             nn.LeakyReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(128, 64),
+            nn.Dropout(0.1), 
+            nn.Linear(512, 512),
             nn.LeakyReLU(),
-            nn.Linear(64, output_size)
+            nn.Linear(512, output_size)
         )
+
     def forward(self, x):
         return self.network(x)
 
