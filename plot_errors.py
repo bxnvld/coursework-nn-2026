@@ -55,14 +55,11 @@ with torch.no_grad():
     # Повертаємо у фізичні величини (Паскалі)
     predictions_real = scaler_Y.inverse_transform(predictions_scaled.numpy())
 
-# В датасеті Y (TARGET_) - це різниця (Точне - Грубе). Тобто це ПОХИБКА грубої сітки.
 error_coarse = Y 
-# Похибка нейромережі = Точне - (Грубе + Прогноз_НМ). 
-# Оскільки Y = Точне - Грубе, то: Похибка НМ = Y - Прогноз_НМ
 error_nn = Y - predictions_real 
 
 # ==========================================
-# 4. ВІЗУАЛІЗАЦІЯ (Аналог рис. 5.21-5.23)
+# 4. ВІЗУАЛІЗАЦІЯ 
 # ==========================================
 components = ['srr', 'szz', 'srz', 'stt']
 titles = [r'Radial Stress $\sigma_{rr}$', r'Axial Stress $\sigma_{zz}$', 
@@ -74,23 +71,18 @@ axs = axs.flatten()
 for i in range(4):
     ax = axs[i]
     
-    # Визначаємо межі графіка (відкидаємо 1% екстремальних викидів для краси)
     min_val = np.percentile(error_coarse[:, i], 1)
     max_val = np.percentile(error_coarse[:, i], 99)
-    # Зробимо графік симетричним відносно нуля
     limit = max(abs(min_val), abs(max_val))
-    if limit == 0: limit = 1e-5 # Запобіжник для srz, яке дорівнює нулю
+    if limit == 0: limit = 1e-5
     bins = np.linspace(-limit, limit, 100)
     
-    # Гістограма для грубої сітки (червоний пунктир, як у статті)
     ax.hist(error_coarse[:, i], bins=bins, color='red', alpha=0.6, 
             histtype='step', linestyle='--', linewidth=2, label=r'Error Coarse ($\sigma^F - \sigma^C$)')
     
-    # Гістограма для нейромережі (суцільна синя лінія)
     ax.hist(error_nn[:, i], bins=bins, color='blue', alpha=0.8, 
             histtype='step', linestyle='-', linewidth=2, label=r'Error NN ($\sigma^F - \sigma^{NN}$)')
     
-    # Логарифмічна шкала по осі Y
     ax.set_yscale('log')
     ax.set_title(f'Error Distribution: {titles[i]}')
     ax.set_xlabel('Error (Pa)')
@@ -100,4 +92,4 @@ for i in range(4):
 
 plt.tight_layout()
 plt.savefig('error_distribution.png', dpi=300)
-print("✅ Графіки розподілу похибок збережено у 'error_distribution.png'")
+print("Графіки розподілу похибок збережено у 'error_distribution.png'")
