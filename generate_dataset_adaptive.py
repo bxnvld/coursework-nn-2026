@@ -1,5 +1,4 @@
 import os
-# Вимикаємо внутрішню багатопоточність математичних бібліотек для швидкості
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
@@ -14,7 +13,6 @@ import tempfile
 import shutil
 matplotlib.use('Agg')  
 
-# Імпортуємо необхідні класи з проєкту
 from FEM.factory import FEMFactory, ElementType
 from FEM.material import Material
 from FEM.axisymmetricFEMSolver import AxisymmetricFEMSolver
@@ -73,7 +71,7 @@ def process_single_sample(sample_id):
         )
         
         # ==========================================
-        # ЦИКЛ 0: ПОЧАТКОВА ГРУБА СІТКА (Initial Mesh)
+        # (Initial Mesh)
         # ==========================================
         factory_c = FEMFactory(r_min, r_max, z_min, z_max, 0, 0, material=mat, node_dof=2).init(ElementType.LINEAR)
         _, mesh_c = factory_c.create(n_points=2)
@@ -85,8 +83,7 @@ def process_single_sample(sample_id):
         
         pp_raw_c0 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_RAW)
         
-        # ЗБЕРІГАЄМО СТАН ДО ЗГУЩЕННЯ
-        # Оскільки адаптивний метод змінить сітку, нам треба запам'ятати напруження Циклу 0
+        # зберігаємо стан до згущення
         nodes_info = []
         for target_node_id, node in list(mesh_c.nodes.items()):
             if node_id_is_on_boundary(mesh_c, target_node_id): continue
@@ -110,26 +107,23 @@ def process_single_sample(sample_id):
             })
 
         # ==========================================
-        # ЦИКЛ 1: АДАПТИВНЕ ЗГУЩЕННЯ (Adaptive Step 1)
+        # (Adaptive Step 1)
         # ==========================================
         ibem_strategy = FindElementsForRefinementIBEM(io=NullIOService())
-        # Знаходимо елементи з похибкою через IBEM
         refine_ids = ibem_strategy.find(mesh_c, threshold=0.3, bcs=bcs_c0, mode='eta')
         
         if refine_ids:
-            # Фізично подрібнюємо сітку
             mesh_c.refine_elements(refine_ids, auto_plot=False)
             
             bcs_c1 = create_boundary_conditions(mesh_c, current_p)
             solver_c1 = AxisymmetricFEMSolver(mesh_c, bcs_c1)
-            # Зшиваємо висячі вузли (Mortar)
             mesh_c.build_and_attach_mortar_interfaces(solver_c1)
             solver_c1.run(custom_n_points=2, element_type=ElementType.LINEAR)
             
         pp_raw_c1 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_RAW)
 
         # ==========================================
-        # ЕТАЛОН: ДРІБНА СІТКА (Teacher Data)
+        # ДРІБНА СІТКА 
         # ==========================================
         factory_f = FEMFactory(r_min, r_max, z_min, z_max, 0, 0, material=mat, node_dof=2).init(ElementType.LINEAR)
         _, mesh_f = factory_f.create(n_points=2)
@@ -146,17 +140,13 @@ def process_single_sample(sample_id):
         for info in nodes_info:
             target_pt = np.array([[info['r'], info['z']]])
             
-            # Напруження після 1-го кроку адаптації (Цикл 1)
             S1_T = pp_raw_c1.stresses_at(target_pt)[0]
-            # Ідеальне напруження
             F_T = pp_f.stresses_at(target_pt)[0]
             
             row_data = {'sample_id': sample_id, 'r': info['r'], 'z': info['z'], 'p': current_p}
             
-            # Вхід А: Різниця (Цикл 0 - Цикл 1) для цільової точки
             row_data.update(format_stress_dict(info['S0_T'] - S1_T, prefix="PT_diff_"))
             
-            # Вхід А та Б для сусідів
             for idx, n_info in enumerate(info['neighbors']):
                 n_pt = np.array([[n_info['r'], n_info['z']]])
                 S1_N = pp_raw_c1.stresses_at(n_pt)[0]
@@ -174,7 +164,6 @@ def process_single_sample(sample_id):
         print(f"Помилка у потоці {sample_id}: {e}")
         
     finally:
-        # Повертаємося назад і видаляємо тимчасову папку
         os.chdir(original_cwd)
         shutil.rmtree(work_dir, ignore_errors=True)
         
@@ -183,7 +172,7 @@ def process_single_sample(sample_id):
 def generate_dataset_parallel(num_samples=2000):
     dataset = []
     num_cores = mp.cpu_count()
-    print(f"🚀 Запуск генерації METHOD-B (Адаптивний) на {num_cores} ядрах...")
+    print(f"Запуск генерації METHOD-B (Адаптивний) на {num_cores} ядрах...")
     
     with mp.Pool(processes=num_cores) as pool:
         results = pool.map(process_single_sample, range(num_samples))
@@ -194,7 +183,7 @@ def generate_dataset_parallel(num_samples=2000):
     df = pd.DataFrame(dataset)
     filename = "fem_stress_dataset_method_b_2000.csv"
     df.to_csv(filename, index=False)
-    print(f"\n✅ Готово! Датасет (Method-B) збережено у '{filename}'. Зібрано {len(dataset)} рядків.")
+    print(f"\nГотово! Датасет (Method-B) збережено у '{filename}'. Зібрано {len(dataset)} рядків.")
 
 if __name__ == "__main__":
     start=time.time()
