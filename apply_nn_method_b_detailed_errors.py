@@ -33,7 +33,7 @@ except Exception as e:
 # 1. ЗАВАНТАЖЕННЯ МОДЕЛІ ТА СКЕЙЛЕРІВ
 # ==========================================
 print("Завантаження даних для ініціалізації скейлерів...")
-df_train = pd.read_csv('fem_stress_dataset_method_b.csv') 
+df_train = pd.read_csv('fem_stress_dataset_method_b_2000.csv') # ТУТ ПРАВИЛЬНИЙ ФАЙЛ
 
 y_cols = [col for col in df_train.columns if col.startswith('TARGET_')]
 ignore_cols = ['sample_id', 'r', 'z', 'p'] + y_cols
@@ -47,6 +47,7 @@ scaler_Y.fit(df_train[y_cols].values)
 class StressPredictorNN(nn.Module):
     def __init__(self, input_size, output_size):
         super(StressPredictorNN, self).__init__()
+        # Твоя найкраща архітектура 512-512-512!
         self.network = nn.Sequential(
             nn.Linear(input_size, 512),
             nn.LeakyReLU(),
@@ -62,6 +63,7 @@ class StressPredictorNN(nn.Module):
         return self.network(x)
 
 model = StressPredictorNN(input_size=len(x_cols), output_size=len(y_cols))
+# Переконайся, що завантажуєш правильну натреновану модель!
 model.load_state_dict(torch.load("fem_stress_model_method_b.pth"))
 model.eval()
 
@@ -111,7 +113,7 @@ os.chdir(work_dir)
 results_for_plot = []
 
 try:
-    # --- Груба сітка ---
+    # --- ЦИКЛ 0: Груба сітка ---
     factory_c = FEMFactory(r_min, r_max, z_min, z_max, 0, 0, material=mat, node_dof=2).init(ElementType.LINEAR)
     _, mesh_c = factory_c.create(n_points=2)
     mesh_c.generate(config.r_min, config.r_max, config.z_min, config.z_max, rN=4, zN=4, r_func=config.r_func)
@@ -138,7 +140,7 @@ try:
             
         target_nodes.append({'id': target_node_id, 'r': node.r, 'z': node.z, 'S0_T': S0_T, 'neighbors': n_info})
 
-    # --- ОДИН КРОК АДАПТАЦІЇ ---
+    # --- ЦИКЛ 1: ОДИН КРОК АДАПТАЦІЇ ---
     ibem_strategy = FindElementsForRefinementIBEM(io=NullIOService())
     refine_ids = ibem_strategy.find(mesh_c, threshold=0.3, bcs=bcs_c0, mode='eta')
     
@@ -151,7 +153,7 @@ try:
         
     pp_raw_c1 = FEMPostProcessor(mesh_c, recovery_mode=RECOVERY_RAW)
 
-    # --- Дрібна сітка (32x32) ---
+    # --- ЕТАЛОН: Дрібна сітка (32x32) ---
     factory_f = FEMFactory(r_min, r_max, z_min, z_max, 0, 0, material=mat, node_dof=2).init(ElementType.LINEAR)
     _, mesh_f = factory_f.create(n_points=2)
     mesh_f.generate(config.r_min, config.r_max, config.z_min, config.z_max, rN=32, zN=32, r_func=config.r_func)
